@@ -1,7 +1,17 @@
 ﻿using System;
 using System.Text;
+/*
+ * *********************Author :Gau fung*****************************
+ * *********************Email:gaufung@foxmail.com*****************
+ * ********************Description: Matrix Tools**********************
+ * ********************Github:www.github.com/gaofengGit/Matrix***
+ * *********************All Rights Reserved ***************************
+ */
 namespace Gaufung.MatrixTool
 {
+    /// <summary>
+    /// 矩阵类，使用二维数组存储矩阵数据
+    /// </summary>
     public class Matrix
     {
         #region 私有成员和公共属性
@@ -50,6 +60,24 @@ namespace Gaufung.MatrixTool
                 }
             }
         }
+
+        /// <summary>
+        /// 赋值构造函数
+        /// </summary>
+        /// <param name="matrix">赋值矩阵</param>
+        public Matrix(Matrix matrix)
+        {
+            Row = matrix.Column;
+            Column = matrix.Column;
+            Init();
+            for (int i = 0; i < Row; i++)
+            {
+                for (int j = 0; j < Column; j++)
+                {
+                    _elements[i, j] = matrix[i, j];
+                }
+            }
+        }
         /// <summary>
         /// 已知的行和列的构造函数
         /// </summary>
@@ -84,23 +112,7 @@ namespace Gaufung.MatrixTool
                 }
             }
         }
-        /// <summary>
-        /// 赋值构造函数
-        /// </summary>
-        /// <param name="matrix">赋值矩阵</param>
-        public Matrix(Matrix matrix)
-        {
-            Row = matrix.Column;
-            Column = matrix.Column;
-            Init();
-            for (int i = 0; i < Row; i++)
-            {
-                for (int j = 0; j < Column; j++)
-                {
-                    _elements[i, j] = matrix[i, j];
-                }
-            }
-        }
+        
         #endregion
 
         #region 重载操作符
@@ -108,10 +120,18 @@ namespace Gaufung.MatrixTool
         {
             get
             {
+                if (row>Row || col>Column ||row<0||col<0)
+                {
+                    throw new Exception("指数出界！");
+                }
                 return _elements[row,col];
             }
             set
             {
+                if (row > Row || col > Column || row < 0 || col < 0)
+                {
+                    throw new Exception("指数出界！");
+                }
                 _elements[row, col] = value;
             }
         }
@@ -242,6 +262,7 @@ namespace Gaufung.MatrixTool
             return this;
         }
         #endregion
+
         #region 其他辅助函数
         /// <summary>
         /// 将矩阵都设置为零
@@ -256,9 +277,28 @@ namespace Gaufung.MatrixTool
                 }
             }
         }
+
+        /// <summary>
+        /// 格式化输出
+        /// </summary>
+        /// <returns></returns>
+        public string ToString(IFormatProvider formatProvider)
+        {
+            var stringBuilder = new StringBuilder();
+            for (int i = 0; i < Row; i++)
+            {
+                for (int j = 0; j < Column; j++)
+                {
+                    stringBuilder.Append(this[i, j].ToString(formatProvider) + " ");
+                }
+                stringBuilder.Append("\n");
+            }
+            return stringBuilder.ToString();
+        }
         #endregion
 
         #region 数值计算中使用的方法
+
         /// <summary>
         /// 矩阵转置
         /// </summary>
@@ -279,18 +319,68 @@ namespace Gaufung.MatrixTool
         }
 
         /// <summary>
+        /// 判断该矩阵是否为奇异矩阵
+        /// </summary>
+        /// <returns>true:奇异矩阵，false：非奇异矩阵</returns>
+        public bool IsSingularMatrix()
+        {
+            if (Row != Column)
+                return true;
+            //保存原始数据，用一个临时变量进行判断
+            var temp = new Matrix(this);
+            //采用高斯约旦消去法确定是否为奇异矩阵
+            for (int i = 0; i < Row; i++)
+            {
+                //先获得最大的主元值
+                var value = temp[i, i];
+                var maxIndex = i;
+                for (int j = i+1; j < Row; j++)
+                {
+                    //与最大值相比较,如果大
+                    if (this[j,i]>value)
+                    {
+                        maxIndex = j;
+                    }
+                }
+                //取得该列的最大值，如果该列的最大值等于零，则不可逆
+                if (Math.Abs(value) < Eps) return true;
+                //如果不是非奇异矩阵，交换该两行的数据
+                for (int j = 0; j < Column; j++)
+                {
+                    var tempValue = temp[i, j];
+                    temp[i, j] = temp[maxIndex, j];
+                    temp[maxIndex, j] = tempValue;
+                }
+                //进行列主消元
+                for (int j = i+1; j < Row; j++)
+                {
+                    var factor = temp[j, i]/temp[i, i];
+                    for (int k = 0; k < Column; k++)
+                    {
+                        temp[j, k] = temp[j, k] - factor*temp[i, k];
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// LU分解
         /// </summary>
         /// <param name="lPart">L部分</param>
         /// <param name="uPart">U部分</param>
-        /// <returns>是否成功</returns>
+        /// <returns>是否成功，分解后原始矩阵仍在</returns>
         public bool SpiltLu(Matrix lPart,Matrix uPart)
         {
             if (Row!=Column)
                 throw new Exception("行列数不相等！");
-            //todo 检查是否为奇异矩阵
+            if (IsSingularMatrix())
+            {
+                throw  new Exception("奇异矩阵，无法分解!");
+            }
             lPart.Init();
             uPart.Init();
+            var temp = new Matrix(this);
             //从第一列开始
             for (int i = 0; i < Column; i++)
             {
@@ -299,11 +389,11 @@ namespace Gaufung.MatrixTool
                 lPart[i, i] = 1.0;
                 for (int j = i+1; j < Row; j++)
                 {
-                   var factor=this[j, i]/this[i, i];
+                    var factor = temp[j, i] / temp[i, i];
                     lPart[j, i] = factor;
                     for (int k = 0; k < Column; k++)
                     {
-                        this[j, k] = this[j, k] - this[i, k]*factor;
+                        temp[j, k] = temp[j, k] - temp[i, k] * factor;
                     }
                 }
             }
@@ -312,7 +402,7 @@ namespace Gaufung.MatrixTool
             {
                 for (int j = i; j < Column; j++)
                 {
-                    uPart[i, j] = this[i, j];
+                    uPart[i, j] = temp[i, j];
                 }
             }
             return true;
@@ -331,6 +421,10 @@ namespace Gaufung.MatrixTool
                 throw new Exception("行列数不相等！");
             //初始化P矩阵
             pPart.InitMatrix();
+            if (IsSingularMatrix())
+            {
+                throw new Exception("奇异矩阵，无法进行PLU分解！");
+            }
             var temMatrix = new Matrix(this);
             var swapIndex=new int[Row];
             for (int i = 0; i < Row; i++)
@@ -351,22 +445,12 @@ namespace Gaufung.MatrixTool
                         value = temMatrix[j, i];
                     }
                 }
-                //交换该行和数据
-                var row = new double[Column];
-                //保存第一行数据
+                //交换数据
                 for (int j = 0; j < Column; j++)
                 {
-                    row[j] = temMatrix[maxIndex, j];
-                }
-                //设置第一行数据
-                for (int j = 0; j < Column; j++)
-                {
+                    var temp = temMatrix[maxIndex, j];
                     temMatrix[maxIndex, j] = temMatrix[i, j];
-                }
-                //设置第二行数据
-                for (int j = 0; j < Column; j++)
-                {
-                    temMatrix[i, j] = row[j];
+                    temMatrix[i, j] = temp;
                 }
                 SwapIndex(swapIndex,maxIndex,i);
                 //开始处理
@@ -385,6 +469,7 @@ namespace Gaufung.MatrixTool
             }
             //置换矩阵与A原始矩阵相乘，在进行LU分解。
             var pa = pPart*this;
+            //LU分解
             pa.SpiltLu(lPart, uPart);
             return true;
         }
@@ -400,29 +485,66 @@ namespace Gaufung.MatrixTool
             index[index1] = index[index2];
             index[index2] = value;
         }
-        #endregion
 
-        #region 输出函数
-
-        public override string ToString()
+        /// <summary>
+        /// 下三角矩阵求解方程组:Ax=b,A为下三角矩阵
+        /// </summary>
+        /// <param name="consequense">b</param>
+        /// <returns>矩阵：x</returns>
+        public Matrix DecomposeDown(Matrix consequense)
         {
-            var stringBuilder=new StringBuilder();
-            for (int i = 0; i < Row; i++)
+            #region 异常处理
+            if (Row != Column)
+                throw new Exception("非阶阵！");
+            if (consequense.Column != 1)
+                throw new Exception("结果矩阵列数不为1");
+            if (Row != consequense.Row)
+                throw new Exception("三角阵与结果向量的行不相等！");
+            #endregion
+            //结果矩阵
+            var result = new Matrix(Row, 1);
+            result[0, 0] = consequense[0, 0]/this[0, 0];
+            for (int i = 1; i < Row; i++)
             {
-                for (int j = 0; j < Column; j++)
+                var value = 0.0;
+                for (int j = 0; j < i; j++)
                 {
-                    stringBuilder.Append(this[i, j].ToString("f")+" ");
+                    value += this[i, j]*result[j, 0];
                 }
-                stringBuilder.Append("\n");
+                result[i, 0] = (consequense[i, 0] - value)/this[i, i];
             }
-            return stringBuilder.ToString();
+            return result;
         }
-
-        public double GetElement(int row,int col)
+        /// <summary>
+        /// 上三角矩阵求解方程组：Ax=b;A为上三角矩阵
+        /// </summary>
+        /// <param name="consequense">b</param>
+        /// <returns>解：x</returns>
+        public Matrix DecomposeUp(Matrix consequense)
         {
-            return this[row, col];
+            #region 异常处理
+            if (Row != Column)
+                throw new Exception("A非阶阵！");
+            if (consequense.Column != 1)
+                throw new Exception("b矩阵列数不为1");
+            if (Row != consequense.Row)
+                throw new Exception("三角阵与结果向量的行不相等！");
+            #endregion
+            //解的结果矩阵
+            var result = new Matrix(Row, 1);
+            result[Row - 1, 0] = consequense[Row - 1, 0]/this[Row - 1, Column - 1];
+            for (int i = Row-2; i >= 0; i--)
+            {
+                var value = 0.0;
+                for (int j = Row-1; j >i; j--)
+                {
+                    value += this[i, j] * result[j, 0];
+                }
+                result[i, 0] = (consequense[i, 0] - value)/this[i,i];
+            }
+            return result;
         }
-
         #endregion
+
     }
 }
