@@ -112,6 +112,20 @@ namespace Gaufung.MatrixTool
                 }
             }
         }
+        /// <summary>
+        /// 使矩阵成为单位矩阵
+        /// </summary>
+        public void Unitary()
+        {
+            if (Row!=Column) return;
+            //先初始化为0
+            Init();
+            for (int i = 0; i < Column; i++)
+            {
+                //设置对角线上的值为1.0
+                this[i, i] = 1.0;
+            }
+        }
         
         #endregion
 
